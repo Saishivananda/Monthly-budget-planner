@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Budget Planner</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #0d0f13;
+      color: #f3f4f6;
+    }
+    .card {
+      background-color: #161920;
+      border: 1px solid #262b36;
+      border-radius: 1rem;
+    }
+    .alert-card {
+      background-color: #1c2029;
+      border: 1px solid #2b313e;
+      border-radius: 1rem;
+    }
+    .input-field {
+      background-color: #0f1217;
+      border: 1px solid #2d3340;
+      color: #f9fafb;
+      border-radius: 0.625rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .input-field:focus {
+      border-color: #3b82f6;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0d0f13; }
+    ::-webkit-scrollbar-thumb { background: #2d3340; border-radius: 9999px; }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+  <!-- Top Navigation -->
+  <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-[#0d0f13]/95 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div class="flex items-center gap-3">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/20 text-blue-400 font-bold text-base border border-blue-500/30">
+          ₹
+        </div>
+        <div>
+          <h1 class="text-base font-semibold text-white leading-tight">Budget Planner</h1>
+          <p class="text-xs text-slate-400">Personal Finance &amp; Pocket Money Tracker</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        <label class="flex items-center gap-2 rounded-xl bg-[#161920] border border-slate-800 px-3 py-1.5 text-xs text-slate-300">
+          <span class="hidden sm:inline text-slate-400">Month:</span>
+          <input id="monthSelector" type="month" class="bg-transparent text-white font-medium outline-none cursor-pointer" />
+        </label>
+
+        <nav class="flex items-center rounded-xl bg-[#161920] border border-slate-800 p-1 text-xs sm:text-sm">
+          <button type="button" data-tab="dashboard" class="nav-tab rounded-lg px-3 py-1.5 font-medium transition">Dashboard</button>
+          <button type="button" data-tab="expenses" class="nav-tab rounded-lg px-3 py-1.5 font-medium transition">Expenses</button>
+          <button type="button" data-tab="budget" class="nav-tab rounded-lg px-3 py-1.5 font-medium transition">Budget &amp; Goals</button>
+          <button type="button" data-tab="borrowed" class="nav-tab rounded-lg px-3 py-1.5 font-medium transition">Borrowed &amp; Lent</button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
+    <div id="storageWarningBanner" class="hidden rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200 flex flex-wrap items-center justify-between gap-2">
+      <span>Browser storage is restricted in this embed, so changes may reset when you close the tab. Use <strong>Export Backup</strong> before closing and <strong>Import Backup</strong> when you return.</span>
+      <button type="button" id="bannerExportBtn" class="rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-2.5 py-1 font-semibold text-amber-100 transition">Export Now</button>
+    </div>
+    <!-- ==================== VIEW 1: DASHBOARD ==================== -->
+    <section id="view-dashboard" class="space-y-6">
+      <!-- KPI Grid -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div class="card p-4">
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Monthly Allowance</p>
+          <p id="kpiAllowance" class="mt-2 text-2xl font-bold text-white">₹0</p>
+          <p class="mt-1 text-xs text-slate-400">Fixed monthly income</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Total Expenses</p>
+          <p id="kpiExpenses" class="mt-2 text-2xl font-bold text-white">₹0</p>
+          <p id="kpiExpenseCount" class="mt-1 text-xs text-slate-400">0 entries this month</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Remaining Balance</p>
+          <p id="kpiRemaining" class="mt-2 text-2xl font-bold text-emerald-400">₹0</p>
+          <p class="mt-1 text-xs text-slate-400">Allowance − Savings − Spent</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Savings Target / Actual</p>
+          <p id="kpiSavings" class="mt-2 text-2xl font-bold text-blue-400">₹0</p>
+          <p id="kpiSavingsSub" class="mt-1 text-xs text-slate-400">Logged: ₹0</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Daily Spending Avg</p>
+          <p id="kpiDailyAvg" class="mt-2 text-2xl font-bold text-white">₹0</p>
+          <p id="kpiDailyAvgSub" class="mt-1 text-xs text-slate-400">Over elapsed days</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Projected End Bal.</p>
+          <p id="kpiProjected" class="mt-2 text-2xl font-bold text-white">₹0</p>
+          <p class="mt-1 text-xs text-slate-400">At current daily rate</p>
+        </div>
+      </div>
+
+      <!-- Planned vs Actual Summary Bar -->
+      <div class="card p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-semibold text-white">Planned Budget vs. Actual Spending</h2>
+            <p id="plannedSummaryText" class="text-xs text-slate-400 mt-0.5"></p>
+          </div>
+          <span id="overallStatusBadge" class="rounded-full px-3 py-1 text-xs font-semibold"></span>
+        </div>
+        <div class="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div id="overallProgressBar" class="h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Budget Alerts Section (Reference Style) -->
+      <div class="card p-5 sm:p-6 bg-[#121417]">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-5">
+          <div>
+            <h2 class="text-lg font-semibold text-white">Budget Alerts</h2>
+            <p id="alertsSubtitle" class="text-xs text-slate-400 mt-0.5">Category spending limits for selected month</p>
+          </div>
+          <button type="button" id="quickAddFromDash" class="rounded-xl bg-blue-600 hover:bg-blue-500 px-3.5 py-2 text-xs font-semibold text-white transition">
+            + Log Expense
+          </button>
+        </div>
+        <div id="budgetAlertsGrid" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="card p-5">
+          <h3 class="text-sm font-semibold text-white mb-4">Category-Wise Spending (Planned vs. Actual)</h3>
+          <div class="relative h-72">
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </div>
+        <div class="card p-5">
+          <h3 class="text-sm font-semibold text-white mb-4">Daily Spending Trend</h3>
+          <div class="relative h-72">
+            <canvas id="dailyChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: EXPENSE TRACKER ==================== -->
+    <section id="view-expenses" class="hidden space-y-6">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <!-- Add / Edit Expense Form -->
+        <div class="card p-5 lg:col-span-1 h-fit">
+          <div class="flex items-center justify-between mb-4">
+            <h2 id="expenseFormTitle" class="text-base font-semibold text-white">Add Expense</h2>
+            <button type="button" id="cancelEditBtn" class="hidden text-xs text-slate-400 hover:text-white">Cancel edit</button>
+          </div>
+          <form id="expenseForm" class="space-y-3.5">
+            <input type="hidden" id="expId" />
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="expDate" class="block text-xs font-medium text-slate-400 mb-1">Date</label>
+                <input id="expDate" type="date" required class="input-field" />
+              </div>
+              <div>
+                <label for="expAmount" class="block text-xs font-medium text-slate-400 mb-1">Amount (₹)</label>
+                <input id="expAmount" type="number" step="0.01" min="0.01" required placeholder="0.00" class="input-field" />
+              </div>
+            </div>
+            <div>
+              <label for="expCategory" class="block text-xs font-medium text-slate-400 mb-1">Category</label>
+              <select id="expCategory" required class="input-field"></select>
+            </div>
+            <div>
+              <label for="expDesc" class="block text-xs font-medium text-slate-400 mb-1">Description (optional)</label>
+              <input id="expDesc" type="text" placeholder="e.g. Canteen lunch, Bus pass" class="input-field" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="expPayment" class="block text-xs font-medium text-slate-400 mb-1">Payment Method</label>
+                <select id="expPayment" class="input-field">
+                  <option value="">Not specified</option>
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Card">Card</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+              </div>
+              <div>
+                <label for="expType" class="block text-xs font-medium text-slate-400 mb-1">Expense Type</label>
+                <select id="expType" class="input-field">
+                  <option value="Need">Need</option>
+                  <option value="Want">Want</option>
+                  <option value="Savings">Savings</option>
+                </select>
+              </div>
+            </div>
+            <div id="savingsGoalWrap" class="hidden">
+              <label for="expGoal" class="block text-xs font-medium text-slate-400 mb-1">Savings Goal</label>
+              <select id="expGoal" class="input-field"></select>
+            </div>
+            <button type="submit" id="expSubmitBtn" class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 py-2.5 text-sm font-semibold text-white transition">
+              Save Transaction
+            </button>
+          </form>
+        </div>
+
+        <!-- Filters, Table & Daily Totals -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="card p-5 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h2 class="text-base font-semibold text-white">Transaction History</h2>
+              <button type="button" id="clearFiltersBtn" class="text-xs text-blue-400 hover:text-blue-300">Reset Filters</button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              <input id="filterSearch" type="search" placeholder="Search description or category..." class="input-field" />
+              <input id="filterMonth" type="month" class="input-field" title="Filter by month" />
+              <input id="filterDate" type="date" class="input-field" title="Filter by exact date" />
+              <select id="filterCategory" class="input-field"></select>
+              <select id="filterPayment" class="input-field">
+                <option value="">All Payment Methods</option>
+                <option value="Cash">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="Card">Card</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+              </select>
+              <select id="filterType" class="input-field">
+                <option value="">All Expense Types</option>
+                <option value="Need">Need</option>
+                <option value="Want">Want</option>
+                <option value="Savings">Savings</option>
+              </select>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="border-b border-slate-800 text-xs uppercase text-slate-400">
+                  <tr>
+                    <th class="py-2.5 pr-3">Date</th>
+                    <th class="py-2.5 pr-3">Category</th>
+                    <th class="py-2.5 pr-3">Description</th>
+                    <th class="py-2.5 pr-3">Method</th>
+                    <th class="py-2.5 pr-3">Type</th>
+                    <th class="py-2.5 pr-3 text-right">Amount</th>
+                    <th class="py-2.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="expenseTableBody" class="divide-y divide-slate-800/70"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Daily Spending Totals -->
+          <div class="card p-5">
+            <h3 class="text-sm font-semibold text-white mb-3">Daily Spending Totals (Filtered Expenses)</h3>
+            <div id="dailyTotalsList" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 3: BUDGET & GOALS ==================== -->
+    <section id="view-budget" class="hidden space-y-6">
+      <!-- Monthly Settings -->
+      <div class="card p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base font-semibold text-white">Monthly Budget Configuration</h2>
+            <p class="text-xs text-slate-400">Changes update all category budgets, Dashboard KPIs, and Budget Alerts immediately.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="file" id="importJsonInput" accept=".json" class="hidden" />
+            <button type="button" id="importJsonBtn" class="rounded-xl border border-slate-700 hover:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 transition">
+              Import Backup
+            </button>
+            <button type="button" id="exportJsonBtn" class="rounded-xl border border-slate-700 hover:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 transition">
+              Export Backup
+            </button>
+            <button type="button" id="resetDataBtn" class="rounded-xl border border-red-900/60 bg-red-950/40 hover:bg-red-900/50 px-3 py-1.5 text-xs font-medium text-red-300 transition">
+              Reset to Excel Data
+            </button>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label for="cfgAllowance" class="block text-xs font-medium text-slate-400 mb-1">Monthly Pocket Money / Allowance (₹)</label>
+            <input id="cfgAllowance" type="number" min="0" step="50" class="input-field" />
+          </div>
+          <div>
+            <label for="cfgSavingsRate" class="block text-xs font-medium text-slate-400 mb-1">Savings Rate (% of Allowance)</label>
+            <input id="cfgSavingsRate" type="number" min="0" max="100" step="0.1" class="input-field" />
+          </div>
+          <div class="flex flex-col justify-center rounded-xl bg-[#0f1217] border border-slate-800 px-4 py-2.5">
+            <span class="text-xs text-slate-400">Monthly Savings Target</span>
+            <span id="cfgSavingsAmount" class="text-lg font-bold text-blue-400">₹0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Allocations -->
+      <div class="card p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-semibold text-white">Budget Categories &amp; Allocations</h2>
+            <p id="allocationSummary" class="text-xs mt-0.5"></p>
+          </div>
+        </div>
+
+        <form id="addCategoryForm" class="grid grid-cols-1 gap-2.5 sm:grid-cols-4">
+          <input id="newCatName" type="text" required placeholder="New category name (e.g. Travel)" class="input-field sm:col-span-2" />
+          <input id="newCatPct" type="number" min="0" max="100" step="0.1" required placeholder="Allocation %" class="input-field" />
+          <button type="submit" class="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition">
+            + Add Category
+          </button>
+        </form>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="border-b border-slate-800 text-xs uppercase text-slate-400">
+              <tr>
+                <th class="py-2.5 pr-3">Category</th>
+                <th class="py-2.5 pr-3 w-32">% of Allowance</th>
+                <th class="py-2.5 pr-3 text-right">Budget (₹)</th>
+                <th class="py-2.5 pr-3 text-right">Spent</th>
+                <th class="py-2.5 pr-3 text-right">Remaining</th>
+                <th class="py-2.5 pr-3 text-right">% Used</th>
+                <th class="py-2.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="categoryTableBody" class="divide-y divide-slate-800/70"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Savings Goals -->
+      <div class="card p-5 space-y-4">
+        <h2 class="text-base font-semibold text-white">Savings Goals Tracker</h2>
+        <form id="addGoalForm" class="grid grid-cols-1 gap-2.5 sm:grid-cols-5">
+          <input id="newGoalName" type="text" required placeholder="Goal name (e.g. Laptop)" class="input-field" />
+          <input id="newGoalTarget" type="number" min="1" step="100" required placeholder="Target (₹)" class="input-field" />
+          <input id="newGoalPrior" type="number" min="0" step="100" placeholder="Prior saved (₹)" class="input-field" />
+          <input id="newGoalDate" type="date" class="input-field" title="Target date" />
+          <button type="submit" class="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition">
+            + Add Goal
+          </button>
+        </form>
+        <div id="goalsGrid" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 4: MONEY BORROWED & LENT ==================== -->
+    <section id="view-borrowed" class="hidden space-y-6">
+      <!-- Top Separate Totals -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="card p-5">
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Total Money Borrowed</p>
+          <p id="totalBorrowedDisplay" class="mt-2 text-2xl font-bold text-amber-400">₹0</p>
+          <p class="mt-1 text-xs text-slate-400">Sum of all money you currently owe others (separate from monthly budget)</p>
+        </div>
+        <div class="card p-5">
+          <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Total Money Owed to Me</p>
+          <p id="totalLentDisplay" class="mt-2 text-2xl font-bold text-emerald-400">₹0</p>
+          <p class="mt-1 text-xs text-slate-400">Sum of all money others owe you (separate from monthly budget)</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <!-- Subsection 1: Money I Borrowed -->
+        <div class="card p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-semibold text-white">1. Money I Borrowed</h2>
+            <button type="button" id="cancelBorrowedEditBtn" class="hidden text-xs text-slate-400 hover:text-white">Cancel edit</button>
+          </div>
+          <form id="borrowedForm" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <input type="hidden" id="borId" />
+            <div>
+              <label for="borName" class="block text-xs font-medium text-slate-400 mb-1">Name</label>
+              <input id="borName" type="text" required placeholder="Person you borrowed from" class="input-field" />
+            </div>
+            <div>
+              <label for="borAmount" class="block text-xs font-medium text-slate-400 mb-1">Amount (₹)</label>
+              <input id="borAmount" type="number" step="0.01" min="0.01" required placeholder="0.00" class="input-field" />
+            </div>
+            <div>
+              <label for="borDate" class="block text-xs font-medium text-slate-400 mb-1">Date</label>
+              <input id="borDate" type="date" required class="input-field" />
+            </div>
+            <div>
+              <label for="borReason" class="block text-xs font-medium text-slate-400 mb-1">Reason</label>
+              <input id="borReason" type="text" required placeholder="Why you borrowed it" class="input-field" />
+            </div>
+            <div class="sm:col-span-2">
+              <button type="submit" id="borSubmitBtn" class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 py-2 text-sm font-semibold text-white transition">
+                Add Borrowed Record
+              </button>
+            </div>
+          </form>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="border-b border-slate-800 text-xs uppercase text-slate-400">
+                <tr>
+                  <th class="py-2 pr-3">Name</th>
+                  <th class="py-2 pr-3">Date</th>
+                  <th class="py-2 pr-3">Reason</th>
+                  <th class="py-2 pr-3 text-right">Amount</th>
+                  <th class="py-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="borrowedTableBody" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Subsection 2: Money Others Owe Me -->
+        <div class="card p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-semibold text-white">2. Money Others Owe Me</h2>
+            <button type="button" id="cancelLentEditBtn" class="hidden text-xs text-slate-400 hover:text-white">Cancel edit</button>
+          </div>
+          <form id="lentForm" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <input type="hidden" id="lentId" />
+            <div>
+              <label for="lentName" class="block text-xs font-medium text-slate-400 mb-1">Name</label>
+              <input id="lentName" type="text" required placeholder="Person who owes you" class="input-field" />
+            </div>
+            <div>
+              <label for="lentAmount" class="block text-xs font-medium text-slate-400 mb-1">Amount (₹)</label>
+              <input id="lentAmount" type="number" step="0.01" min="0.01" required placeholder="0.00" class="input-field" />
+            </div>
+            <div>
+              <label for="lentDate" class="block text-xs font-medium text-slate-400 mb-1">Date</label>
+              <input id="lentDate" type="date" required class="input-field" />
+            </div>
+            <div>
+              <label for="lentReason" class="block text-xs font-medium text-slate-400 mb-1">Reason</label>
+              <input id="lentReason" type="text" required placeholder="Why you lent it" class="input-field" />
+            </div>
+            <div class="sm:col-span-2">
+              <button type="submit" id="lentSubmitBtn" class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 py-2 text-sm font-semibold text-white transition">
+                Add Lent Record
+              </button>
+            </div>
+          </form>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="border-b border-slate-800 text-xs uppercase text-slate-400">
+                <tr>
+                  <th class="py-2 pr-3">Name</th>
+                  <th class="py-2 pr-3">Date</th>
+                  <th class="py-2 pr-3">Reason</th>
+                  <th class="py-2 pr-3 text-right">Amount</th>
+                  <th class="py-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="lentTableBody" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- In-page Confirmation Modal -->
+  <div id="confirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
+    <div class="card w-full max-w-sm p-5 space-y-4">
+      <h3 id="confirmTitle" class="text-base font-semibold text-white">Confirm Action</h3>
+      <p id="confirmMessage" class="text-sm text-slate-300"></p>
+      <div class="flex justify-end gap-2">
+        <button type="button" id="confirmCancelBtn" class="rounded-xl border border-slate-700 px-3.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800">Cancel</button>
+        <button type="button" id="confirmOkBtn" class="rounded-xl bg-red-600 hover:bg-red-500 px-3.5 py-1.5 text-xs font-semibold text-white">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden rounded-xl border border-slate-700 bg-[#1c2029] px-4 py-2.5 text-sm text-white shadow-xl"></div>
+
+  <script>
+    const STORAGE_KEY = 'budget_planner_excel_v2';
+
+    // Exact initial data imported from Budget Planner.xlsx / Budget Planner_v2.xlsx
+    const INITIAL_STATE = {
+      allowance: 3000,
+      savingsRate: 16.7,
+      selectedMonth: '2026-10',
+      categories: [
+        { id: 'cat_35', name: 'Food/Mess/Canteen', pct: 40.0 },
+        { id: 'cat_36', name: 'Snacks & Beverages', pct: 13.37 },
+        { id: 'cat_37', name: 'Stationery & Printing', pct: 5.0 },
+        { id: 'cat_38', name: 'Laundry', pct: 10.0 },
+        { id: 'cat_39', name: 'Outings/Entertainment', pct: 12.0 }
+      ],
+      goals: [
+        { id: 'goal_16', name: 'Trip', target: 3000, priorSaved: 0, targetDate: '' }
+      ],
+      expenses: [
+        { id: 'exp_6', date: '2026-10-21', category: 'Snacks & Beverages', description: 'Wending machine', paymentMethod: '', expenseType: 'Want', savingsGoal: '', amount: 20 },
+        { id: 'exp_7', date: '2026-10-21', category: 'Laundry', description: 'Liqiud', paymentMethod: '', expenseType: 'Need', savingsGoal: '', amount: 88 },
+        { id: 'exp_8', date: '2026-10-22', category: 'Food/Mess/Canteen', description: '', paymentMethod: '', expenseType: 'Need', savingsGoal: '', amount: 222 },
+        { id: 'exp_9', date: '2026-10-22', category: 'Snacks & Beverages', description: '', paymentMethod: '', expenseType: 'Want', savingsGoal: '', amount: 35 },
+        { id: 'exp_10', date: '2026-10-23', category: 'Outings/Entertainment', description: '', paymentMethod: '', expenseType: 'Want', savingsGoal: '', amount: 90 },
+        { id: 'exp_11', date: '2026-10-23', category: 'Outings/Entertainment', description: '', paymentMethod: '', expenseType: 'Want', savingsGoal: '', amount: 80 }
+      ],
+      borrowed: [],
+      lent: []
+    };
+
+    function cloneInitial() {
+      return JSON.parse(JSON.stringify(INITIAL_STATE));
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.categories) && Array.isArray(parsed.expenses)) {
+            if (!Array.isArray(parsed.borrowed)) parsed.borrowed = [];
+            if (!Array.isArray(parsed.lent)) parsed.lent = [];
+            return parsed;
+          }
+        }
+      } catch (e) {}
+      return cloneInitial();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    let state = loadState();
+    let activeTab = 'dashboard';
+    let categoryChartInstance = null;
+    let dailyChartInstance = null;
+    let confirmCallback = null;
+
+    const fmtINR = (n) => {
+      const val = Math.round(Number(n) || 0);
+      return '₹' + val.toLocaleString('en-IN');
+    };
+
+    const fmtINRDec = (n) => {
+      const val = Number(n) || 0;
+      return '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    };
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
+    }
+
+    function openConfirm(title, message, onOk) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+      confirmCallback = onOk;
+      const modal = document.getElementById('confirmModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeConfirm() {
+      const modal = document.getElementById('confirmModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      confirmCallback = null;
+    }
+
+    function getDaysInMonth(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      return new Date(y, m, 0).getDate();
+    }
+
+    function getElapsedDays(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      const daysInMonth = getDaysInMonth(ym);
+      const now = new Date();
+      const curY = now.getFullYear();
+      const curM = now.getMonth() + 1;
+      if (y < curY || (y === curY && m < curM)) return daysInMonth;
+      if (y > curY || (y === curY && m > curM)) return 0;
+      return now.getDate();
+    }
+
+    function formatMonthLabel(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+
+    function getMonthMetrics(ym) {
+      const monthTx = state.expenses.filter((e) => e.date && e.date.startsWith(ym));
+      const expenseTx = monthTx.filter((e) => e.expenseType !== 'Savings');
+      const savingsTx = monthTx.filter((e) => e.expenseType === 'Savings');
+
+      const totalExpenses = expenseTx.reduce((s, e) => s + Number(e.amount || 0), 0);
+      const loggedSavings = savingsTx.reduce((s, e) => s + Number(e.amount || 0), 0);
+      const savingsTarget = state.allowance * (state.savingsRate / 100);
+      const effectiveSavings = Math.max(savingsTarget, loggedSavings);
+      const remainingBalance = state.allowance - effectiveSavings - totalExpenses;
+      const spendableBudget = Math.max(0, state.allowance - savingsTarget);
+
+      const daysInMonth = getDaysInMonth(ym);
+      const elapsedDays = getElapsedDays(ym);
+      const dailyAvg = elapsedDays > 0 ? totalExpenses / elapsedDays : 0;
+      const projectedEndBalance = state.allowance - effectiveSavings - dailyAvg * daysInMonth;
+
+      const catStats = state.categories.map((c) => {
+        const budget = state.allowance * (c.pct / 100);
+        const spent = expenseTx
+          .filter((e) => e.category === c.name)
+          .reduce((s, e) => s + Number(e.amount || 0), 0);
+        const pctUsed = budget > 0 ? (spent / budget) * 100 : 0;
+        const remaining = budget > 0 ? Math.max(0, budget - spent) : 0;
+        const overspent = budget > 0 && spent > budget ? spent - budget : 0;
+        return { ...c, budget, spent, pctUsed, remaining, overspent };
+      });
+
+      return {
+        monthTx,
+        expenseTx,
+        savingsTx,
+        totalExpenses,
+        loggedSavings,
+        savingsTarget,
+        effectiveSavings,
+        remainingBalance,
+        spendableBudget,
+        daysInMonth,
+        elapsedDays,
+        dailyAvg,
+        projectedEndBalance,
+        catStats
+      };
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      ['dashboard', 'expenses', 'budget', 'borrowed'].forEach((t) => {
+        document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tab);
+      });
+      document.querySelectorAll('.nav-tab').forEach((btn) => {
+        const isActive = btn.dataset.tab === tab;
+        btn.classList.toggle('bg-blue-600', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('text-slate-400', !isActive);
+        btn.classList.toggle('hover:text-white', !isActive);
+      });
+      renderAll();
+    }
+
+    function renderDashboard() {
+      const ym = state.selectedMonth;
+      const m = getMonthMetrics(ym);
+
+      document.getElementById('kpiAllowance').textContent = fmtINR(state.allowance);
+      document.getElementById('kpiExpenses').textContent = fmtINR(m.totalExpenses);
+      document.getElementById('kpiExpenseCount').textContent = `${m.expenseTx.length} expense ${m.expenseTx.length === 1 ? 'entry' : 'entries'} in ${formatMonthLabel(ym)}`;
+
+      const remEl = document.getElementById('kpiRemaining');
+      remEl.textContent = fmtINR(m.remainingBalance);
+      remEl.className = `mt-2 text-2xl font-bold ${m.remainingBalance < 0 ? 'text-red-400' : m.remainingBalance < m.spendableBudget * 0.1 ? 'text-amber-400' : 'text-emerald-400'}`;
+
+      document.getElementById('kpiSavings').textContent = fmtINR(m.savingsTarget);
+      document.getElementById('kpiSavingsSub').textContent = `Logged: ${fmtINR(m.loggedSavings)} (${state.savingsRate}%)`;
+      document.getElementById('kpiDailyAvg').textContent = fmtINRDec(m.dailyAvg);
+      document.getElementById('kpiDailyAvgSub').textContent = m.elapsedDays > 0 ? `Across ${m.elapsedDays} elapsed days` : 'Future month';
+
+      const projEl = document.getElementById('kpiProjected');
+      projEl.textContent = fmtINR(m.projectedEndBalance);
+      projEl.className = `mt-2 text-2xl font-bold ${m.projectedEndBalance < 0 ? 'text-red-400' : 'text-white'}`;
+
+      // Overall Planned vs Actual
+      const usedPct = m.spendableBudget > 0 ? (m.totalExpenses / m.spendableBudget) * 100 : 0;
+      document.getElementById('plannedSummaryText').textContent =
+        `${fmtINR(m.totalExpenses)} spent of ${fmtINR(m.spendableBudget)} spendable budget (${usedPct.toFixed(1)}% used)`;
+
+      const overallBadge = document.getElementById('overallStatusBadge');
+      const overallBar = document.getElementById('overallProgressBar');
+      overallBar.style.width = `${Math.min(100, usedPct)}%`;
+      if (usedPct >= 100) {
+        overallBadge.textContent = 'Over Budget';
+        overallBadge.className = 'rounded-full px-3 py-1 text-xs font-semibold bg-red-500/20 text-red-300 border border-red-500/30';
+        overallBar.className = 'h-full rounded-full transition-all duration-300 bg-red-500';
+      } else if (usedPct >= 80) {
+        overallBadge.textContent = 'Approaching Limit';
+        overallBadge.className = 'rounded-full px-3 py-1 text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        overallBar.className = 'h-full rounded-full transition-all duration-300 bg-amber-500';
+      } else {
+        overallBadge.textContent = 'Within Budget';
+        overallBadge.className = 'rounded-full px-3 py-1 text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        overallBar.className = 'h-full rounded-full transition-all duration-300 bg-slate-400';
+      }
+
+      // Budget Alerts Cards
+      document.getElementById('alertsSubtitle').textContent = `Category spending limits for ${formatMonthLabel(ym)}`;
+      const grid = document.getElementById('budgetAlertsGrid');
+      if (m.catStats.length === 0) {
+        grid.innerHTML = `<p class="text-sm text-slate-400 col-span-full">No categories configured yet. Add one in Budget &amp; Goals.</p>`;
+      } else {
+        grid.innerHTML = m.catStats.map((cat) => {
+          const noBudget = cat.budget <= 0;
+          const barWidth = noBudget ? 0 : Math.min(100, cat.pctUsed);
+          let barColor = 'bg-slate-400';
+          let badgeClass = 'bg-slate-700/70 text-slate-200 border-slate-600/50';
+          let badgeText = noBudget ? 'No budget set' : `${Math.round(cat.pctUsed)}% used`;
+          let msgText = noBudget ? 'No budget set for this category.' : 'You are within your budget.';
+          let msgClass = 'text-slate-400';
+
+          if (!noBudget && cat.pctUsed >= 100) {
+            barColor = 'bg-red-500';
+            badgeClass = 'bg-red-500/20 text-red-300 border-red-500/40';
+            badgeText = `Over budget (${Math.round(cat.pctUsed)}%)`;
+            msgText = 'You have exceeded your budget.';
+            msgClass = 'text-red-400 font-medium';
+          } else if (!noBudget && cat.pctUsed >= 80) {
+            barColor = 'bg-amber-500';
+            badgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+            badgeText = `${Math.round(cat.pctUsed)}% used`;
+            msgText = 'You are approaching your budget limit.';
+            msgClass = 'text-amber-400 font-medium';
+          }
+
+          const ratioText = noBudget
+            ? `${fmtINR(cat.spent)} / No budget set`
+            : `${fmtINR(cat.spent)} / ${fmtINR(cat.budget)}`;
+
+          const remText = noBudget
+            ? 'No budget set'
+            : cat.overspent > 0
+              ? `₹0 remaining <span class="text-red-400 font-medium">(Overspent by ${fmtINR(cat.overspent)})</span>`
+              : `${fmtINR(cat.remaining)} remaining`;
+
+          return `
+            <div class="alert-card p-4 space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <h3 class="text-sm font-bold text-white">${escapeHtml(cat.name)}</h3>
+                <span class="text-sm font-semibold text-slate-200 whitespace-nowrap">${ratioText}</span>
+              </div>
+              <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+                <div class="h-full rounded-full ${barColor} transition-all duration-300" style="width: ${barWidth.toFixed(1)}%"></div>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span class="inline-flex items-center rounded-md border px-2 py-0.5 font-semibold ${badgeClass}">${badgeText}</span>
+                <span class="text-slate-300">${remText}</span>
+              </div>
+              <p class="text-xs ${msgClass}">${msgText}</p>
+            </div>
+          `;
+        }).join('');
+      }
+
+      renderCharts(ym, m);
+    }
+
+    function renderCharts(ym, m) {
+      if (typeof Chart === 'undefined') return;
+
+      const catCtx = document.getElementById('categoryChart');
+      if (categoryChartInstance) categoryChartInstance.destroy();
+      categoryChartInstance = new Chart(catCtx, {
+        type: 'bar',
+        data: {
+          labels: m.catStats.map((c) => c.name),
+          datasets: [
+            {
+              label: 'Planned Budget (₹)',
+              data: m.catStats.map((c) => Math.round(c.budget)),
+              backgroundColor: 'rgba(59, 130, 246, 0.55)',
+              borderRadius: 6
+            },
+            {
+              label: 'Actual Spent (₹)',
+              data: m.catStats.map((c) => Math.round(c.spent)),
+              backgroundColor: m.catStats.map((c) =>
+                c.budget > 0 && c.pctUsed >= 100
+                  ? 'rgba(239, 68, 68, 0.85)'
+                  : c.budget > 0 && c.pctUsed >= 80
+                    ? 'rgba(245, 158, 11, 0.85)'
+                    : 'rgba(16, 185, 129, 0.85)'
+              ),
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 11 } } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } },
+            y: { ticks: { color: '#94a3b8', callback: (v) => '₹' + v }, grid: { color: '#1f2430' } }
+          }
+        }
+      });
+
+      const dayLabels = [];
+      const dayValues = [];
+      for (let d = 1; d <= m.daysInMonth; d++) {
+        const dStr = `${ym}-${String(d).padStart(2, '0')}`;
+        dayLabels.push(String(d));
+        const daySum = m.expenseTx
+          .filter((e) => e.date === dStr)
+          .reduce((s, e) => s + Number(e.amount || 0), 0);
+        dayValues.push(daySum);
+      }
+
+      const dailyCtx = document.getElementById('dailyChart');
+      if (dailyChartInstance) dailyChartInstance.destroy();
+      dailyChartInstance = new Chart(dailyCtx, {
+        type: 'bar',
+        data: {
+          labels: dayLabels,
+          datasets: [
+            {
+              label: 'Daily Spend (₹)',
+              data: dayValues,
+              backgroundColor: 'rgba(245, 158, 11, 0.75)',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+            y: { ticks: { color: '#94a3b8', callback: (v) => '₹' + v }, grid: { color: '#1f2430' } }
+          }
+        }
+      });
+    }
+
+    function populateExpenseDropdowns() {
+      const catSel = document.getElementById('expCategory');
+      const curCat = catSel.value;
+      catSel.innerHTML = state.categories.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+      if (curCat && state.categories.some((c) => c.name === curCat)) catSel.value = curCat;
+
+      const filterCat = document.getElementById('filterCategory');
+      const curFCat = filterCat.value;
+      filterCat.innerHTML = '<option value="">All Categories</option>' +
+        state.categories.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+      filterCat.value = curFCat;
+
+      const goalSel = document.getElementById('expGoal');
+      const curGoal = goalSel.value;
+      goalSel.innerHTML = '<option value="">Select savings goal...</option>' +
+        state.goals.map((g) => `<option value="${escapeHtml(g.name)}">${escapeHtml(g.name)}</option>`).join('');
+      if (curGoal) goalSel.value = curGoal;
+    }
+
+    function renderExpenses() {
+      populateExpenseDropdowns();
+
+      const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+      const fMonth = document.getElementById('filterMonth').value;
+      const fDate = document.getElementById('filterDate').value;
+      const fCat = document.getElementById('filterCategory').value;
+      const fPay = document.getElementById('filterPayment').value;
+      const fType = document.getElementById('filterType').value;
+
+      const filtered = state.expenses
+        .filter((e) => {
+          if (fMonth && !e.date.startsWith(fMonth)) return false;
+          if (fDate && e.date !== fDate) return false;
+          if (fCat && e.category !== fCat) return false;
+          if (fPay && e.paymentMethod !== fPay) return false;
+          if (fType && e.expenseType !== fType) return false;
+          if (search) {
+            const hay = `${e.category} ${e.description} ${e.paymentMethod} ${e.expenseType}`.toLowerCase();
+            if (!hay.includes(search)) return false;
+          }
+          return true;
+        })
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      const tbody = document.getElementById('expenseTableBody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400">No matching transactions found.</td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map((e) => `
+          <tr class="hover:bg-slate-800/30">
+            <td class="py-2.5 pr-3 whitespace-nowrap text-slate-300">${escapeHtml(e.date)}</td>
+            <td class="py-2.5 pr-3 font-medium text-white">${escapeHtml(e.category)}</td>
+            <td class="py-2.5 pr-3 text-slate-400">${escapeHtml(e.description || '—')}</td>
+            <td class="py-2.5 pr-3 text-slate-300">${escapeHtml(e.paymentMethod || '—')}</td>
+            <td class="py-2.5 pr-3">
+              <span class="rounded-md px-2 py-0.5 text-xs font-medium ${
+                e.expenseType === 'Savings'
+                  ? 'bg-blue-500/20 text-blue-300'
+                  : e.expenseType === 'Want'
+                    ? 'bg-amber-500/20 text-amber-300'
+                    : 'bg-emerald-500/20 text-emerald-300'
+              }">${escapeHtml(e.expenseType)}</span>
+            </td>
+            <td class="py-2.5 pr-3 text-right font-semibold text-white whitespace-nowrap">${fmtINRDec(e.amount)}</td>
+            <td class="py-2.5 text-right whitespace-nowrap space-x-2">
+              <button type="button" data-action="edit-exp" data-id="${escapeHtml(e.id)}" class="text-xs text-blue-400 hover:text-blue-300">Edit</button>
+              <button type="button" data-action="del-exp" data-id="${escapeHtml(e.id)}" class="text-xs text-red-400 hover:text-red-300">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      // Daily totals summary (excluding Savings from spending totals)
+      const byDate = {};
+      filtered.filter((e) => e.expenseType !== 'Savings').forEach((e) => {
+        byDate[e.date] = (byDate[e.date] || 0) + Number(e.amount || 0);
+      });
+      const dailyList = document.getElementById('dailyTotalsList');
+      const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+      if (dates.length === 0) {
+        dailyList.innerHTML = `<p class="text-xs text-slate-400 col-span-full">No expense totals for current filter.</p>`;
+      } else {
+        dailyList.innerHTML = dates.map((d) => `
+          <div class="rounded-xl bg-[#0f1217] border border-slate-800 px-3 py-2.5">
+            <p class="text-xs text-slate-400">${escapeHtml(d)}</p>
+            <p class="text-sm font-bold text-white mt-0.5">${fmtINRDec(byDate[d])}</p>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderBudgetAndGoals() {
+      document.getElementById('cfgAllowance').value = state.allowance;
+      document.getElementById('cfgSavingsRate').value = state.savingsRate;
+      document.getElementById('cfgSavingsAmount').textContent = fmtINR(state.allowance * (state.savingsRate / 100));
+
+      const m = getMonthMetrics(state.selectedMonth);
+      const totalCatPct = state.categories.reduce((s, c) => s + Number(c.pct || 0), 0);
+      const totalAllocPct = totalCatPct + Number(state.savingsRate || 0);
+      const diff = 100 - totalAllocPct;
+
+      const summaryEl = document.getElementById('allocationSummary');
+      if (Math.abs(diff) < 0.05) {
+        summaryEl.textContent = `Total allocated: ${totalAllocPct.toFixed(2)}% (100% balanced)`;
+        summaryEl.className = 'text-xs mt-0.5 text-emerald-400';
+      } else if (diff > 0) {
+        summaryEl.textContent = `Total allocated: ${totalAllocPct.toFixed(2)}% (${diff.toFixed(2)}% / ${fmtINRDec(state.allowance * diff / 100)} unallocated)`;
+        summaryEl.className = 'text-xs mt-0.5 text-amber-400';
+      } else {
+        summaryEl.textContent = `Total allocated: ${totalAllocPct.toFixed(2)}% (Over-allocated by ${Math.abs(diff).toFixed(2)}%)`;
+        summaryEl.className = 'text-xs mt-0.5 text-red-400';
+      }
+
+      const catTbody = document.getElementById('categoryTableBody');
+      catTbody.innerHTML = m.catStats.map((c) => `
+        <tr>
+          <td class="py-2.5 pr-3">
+            <input type="text" value="${escapeHtml(c.name)}" data-action="rename-cat" data-id="${escapeHtml(c.id)}" class="input-field py-1" />
+          </td>
+          <td class="py-2.5 pr-3">
+            <input type="number" min="0" max="100" step="0.1" value="${c.pct}" data-action="pct-cat" data-id="${escapeHtml(c.id)}" class="input-field py-1 text-right" />
+          </td>
+          <td class="py-2.5 pr-3 text-right text-slate-200 font-medium">${fmtINRDec(c.budget)}</td>
+          <td class="py-2.5 pr-3 text-right text-slate-300">${fmtINRDec(c.spent)}</td>
+          <td class="py-2.5 pr-3 text-right ${c.overspent > 0 ? 'text-red-400 font-semibold' : 'text-emerald-400'}">
+            ${c.overspent > 0 ? '₹0 (−' + fmtINR(c.overspent) + ')' : fmtINR(c.remaining)}
+          </td>
+          <td class="py-2.5 pr-3 text-right text-slate-300">${c.budget > 0 ? Math.round(c.pctUsed) + '%' : '—'}</td>
+          <td class="py-2.5 text-right">
+            <button type="button" data-action="del-cat" data-id="${escapeHtml(c.id)}" class="text-xs text-red-400 hover:text-red-300">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+
+      // Savings Goals
+      const goalsGrid = document.getElementById('goalsGrid');
+      if (state.goals.length === 0) {
+        goalsGrid.innerHTML = `<p class="text-sm text-slate-400 col-span-full">No savings goals yet. Add one above.</p>`;
+      } else {
+        goalsGrid.innerHTML = state.goals.map((g) => {
+          const logged = state.expenses
+            .filter((e) => e.expenseType === 'Savings' && e.savingsGoal === g.name)
+            .reduce((s, e) => s + Number(e.amount || 0), 0);
+          const totalSaved = Number(g.priorSaved || 0) + logged;
+          const remaining = Math.max(0, Number(g.target || 0) - totalSaved);
+          const pct = g.target > 0 ? Math.min(100, (totalSaved / g.target) * 100) : 0;
+
+          let monthlyReq = 'Set target date';
+          if (g.targetDate) {
+            const now = new Date();
+            const td = new Date(g.targetDate + 'T00:00:00');
+            const months = Math.max(1, (td.getFullYear() - now.getFullYear()) * 12 + (td.getMonth() - now.getMonth()));
+            monthlyReq = `${fmtINR(Math.ceil(remaining / months))} / mo`;
+          } else if (state.allowance * (state.savingsRate / 100) > 0) {
+            const mo = Math.ceil(remaining / (state.allowance * (state.savingsRate / 100)));
+            monthlyReq = `${mo} mo @ savings rate`;
+          }
+
+          return `
+            <div class="alert-card p-4 space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h3 class="text-sm font-bold text-white">${escapeHtml(g.name)}</h3>
+                  <p class="text-xs text-slate-400">Target Date: ${g.targetDate || 'Not set'} · Required: ${monthlyReq}</p>
+                </div>
+                <button type="button" data-action="del-goal" data-id="${escapeHtml(g.id)}" class="text-xs text-red-400 hover:text-red-300">Delete</button>
+              </div>
+              <div class="flex justify-between text-xs text-slate-300">
+                <span>Saved: <strong class="text-white">${fmtINR(totalSaved)}</strong> (Prior ${fmtINR(g.priorSaved)} + Logged ${fmtINR(logged)})</span>
+                <span>Target: <strong class="text-white">${fmtINR(g.target)}</strong></span>
+              </div>
+              <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+                <div class="h-full rounded-full bg-blue-500 transition-all duration-300" style="width: ${pct.toFixed(1)}%"></div>
+              </div>
+              <div class="flex justify-between text-xs text-slate-400">
+                <span>${Math.round(pct)}% complete</span>
+                <span>${fmtINR(remaining)} remaining</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function renderAll() {
+      document.getElementById('monthSelector').value = state.selectedMonth;
+      if (activeTab === 'dashboard') renderDashboard();
+      if (activeTab === 'expenses') renderExpenses();
+      if (activeTab === 'budget') renderBudgetAndGoals();
+      if (activeTab === 'borrowed') renderBorrowedAndLent();
+    }
+
+    function renderBorrowedAndLent() {
+      const totalBorrowed = state.borrowed.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+      const totalLent = state.lent.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+      document.getElementById('totalBorrowedDisplay').textContent = fmtINRDec(totalBorrowed);
+      document.getElementById('totalLentDisplay').textContent = fmtINRDec(totalLent);
+
+      const borBody = document.getElementById('borrowedTableBody');
+      if (state.borrowed.length === 0) {
+        borBody.innerHTML = '<tr><td colspan="5" class="py-5 text-center text-slate-400">No borrowed money records yet.</td></tr>';
+      } else {
+        borBody.innerHTML = [...state.borrowed].sort((a, b) => b.date.localeCompare(a.date)).map((r) => `
+          <tr class="hover:bg-slate-800/30">
+            <td class="py-2.5 pr-3 font-medium text-white">${escapeHtml(r.name)}</td>
+            <td class="py-2.5 pr-3 whitespace-nowrap text-slate-300">${escapeHtml(r.date)}</td>
+            <td class="py-2.5 pr-3 text-slate-400">${escapeHtml(r.reason)}</td>
+            <td class="py-2.5 pr-3 text-right font-semibold text-amber-400 whitespace-nowrap">${fmtINRDec(r.amount)}</td>
+            <td class="py-2.5 text-right whitespace-nowrap space-x-2">
+              <button type="button" data-action="edit-bor" data-id="${escapeHtml(r.id)}" class="text-xs text-blue-400 hover:text-blue-300">Edit</button>
+              <button type="button" data-action="del-bor" data-id="${escapeHtml(r.id)}" class="text-xs text-red-400 hover:text-red-300">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      const lentBody = document.getElementById('lentTableBody');
+      if (state.lent.length === 0) {
+        lentBody.innerHTML = '<tr><td colspan="5" class="py-5 text-center text-slate-400">No money lent records yet.</td></tr>';
+      } else {
+        lentBody.innerHTML = [...state.lent].sort((a, b) => b.date.localeCompare(a.date)).map((r) => `
+          <tr class="hover:bg-slate-800/30">
+            <td class="py-2.5 pr-3 font-medium text-white">${escapeHtml(r.name)}</td>
+            <td class="py-2.5 pr-3 whitespace-nowrap text-slate-300">${escapeHtml(r.date)}</td>
+            <td class="py-2.5 pr-3 text-slate-400">${escapeHtml(r.reason)}</td>
+            <td class="py-2.5 pr-3 text-right font-semibold text-emerald-400 whitespace-nowrap">${fmtINRDec(r.amount)}</td>
+            <td class="py-2.5 text-right whitespace-nowrap space-x-2">
+              <button type="button" data-action="edit-lent" data-id="${escapeHtml(r.id)}" class="text-xs text-blue-400 hover:text-blue-300">Edit</button>
+              <button type="button" data-action="del-lent" data-id="${escapeHtml(r.id)}" class="text-xs text-red-400 hover:text-red-300">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // ==================== EVENT LISTENERS ====================
+    document.querySelectorAll('.nav-tab').forEach((btn) => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    document.getElementById('monthSelector').addEventListener('change', (e) => {
+      if (e.target.value) {
+        state.selectedMonth = e.target.value;
+        saveState();
+        renderAll();
+      }
+    });
+
+    document.getElementById('quickAddFromDash').addEventListener('click', () => {
+      switchTab('expenses');
+      document.getElementById('expAmount').focus();
+    });
+
+    document.getElementById('expType').addEventListener('change', (e) => {
+      document.getElementById('savingsGoalWrap').classList.toggle('hidden', e.target.value !== 'Savings');
+    });
+
+    document.getElementById('expenseForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('expId').value;
+      const date = document.getElementById('expDate').value;
+      const amount = parseFloat(document.getElementById('expAmount').value);
+      const category = document.getElementById('expCategory').value;
+      const description = document.getElementById('expDesc').value.trim();
+      const paymentMethod = document.getElementById('expPayment').value;
+      const expenseType = document.getElementById('expType').value;
+      const savingsGoal = expenseType === 'Savings' ? document.getElementById('expGoal').value : '';
+
+      if (!date || isNaN(amount) || amount <= 0 || !category) {
+        showToast('Please enter a valid date, category, and positive amount.');
+        return;
+      }
+
+      if (id) {
+        const idx = state.expenses.findIndex((x) => x.id === id);
+        if (idx !== -1) {
+          state.expenses[idx] = { id, date, category, description, paymentMethod, expenseType, savingsGoal, amount };
+          showToast('Transaction updated.');
+        }
+      } else {
+        state.expenses.push({
+          id: 'exp_' + Date.now(),
+          date,
+          category,
+          description,
+          paymentMethod,
+          expenseType,
+          savingsGoal,
+          amount
+        });
+        showToast('Transaction added.');
+      }
+
+      saveState();
+      resetExpenseForm();
+      renderAll();
+    });
+
+    function resetExpenseForm() {
+      document.getElementById('expId').value = '';
+      document.getElementById('expAmount').value = '';
+      document.getElementById('expDesc').value = '';
+      document.getElementById('expPayment').value = '';
+      document.getElementById('expType').value = 'Need';
+      document.getElementById('expGoal').value = '';
+      document.getElementById('savingsGoalWrap').classList.add('hidden');
+      document.getElementById('expenseFormTitle').textContent = 'Add Expense';
+      document.getElementById('expSubmitBtn').textContent = 'Save Transaction';
+      document.getElementById('cancelEditBtn').classList.add('hidden');
+    }
+
+    document.getElementById('cancelEditBtn').addEventListener('click', resetExpenseForm);
+
+    document.getElementById('expenseTableBody').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      if (btn.dataset.action === 'edit-exp') {
+        const item = state.expenses.find((x) => x.id === id);
+        if (!item) return;
+        document.getElementById('expId').value = item.id;
+        document.getElementById('expDate').value = item.date;
+        document.getElementById('expAmount').value = item.amount;
+        document.getElementById('expCategory').value = item.category;
+        document.getElementById('expDesc').value = item.description;
+        document.getElementById('expPayment').value = item.paymentMethod;
+        document.getElementById('expType').value = item.expenseType;
+        document.getElementById('savingsGoalWrap').classList.toggle('hidden', item.expenseType !== 'Savings');
+        document.getElementById('expGoal').value = item.savingsGoal || '';
+        document.getElementById('expenseFormTitle').textContent = 'Edit Expense';
+        document.getElementById('expSubmitBtn').textContent = 'Update Transaction';
+        document.getElementById('cancelEditBtn').classList.remove('hidden');
+      } else if (btn.dataset.action === 'del-exp') {
+        openConfirm('Delete Transaction', 'Are you sure you want to delete this transaction?', () => {
+          state.expenses = state.expenses.filter((x) => x.id !== id);
+          saveState();
+          renderAll();
+          showToast('Transaction deleted.');
+        });
+      }
+    });
+
+    ['filterSearch', 'filterMonth', 'filterDate', 'filterCategory', 'filterPayment', 'filterType'].forEach((id) => {
+      document.getElementById(id).addEventListener('input', renderExpenses);
+      document.getElementById(id).addEventListener('change', renderExpenses);
+    });
+
+    document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+      ['filterSearch', 'filterMonth', 'filterDate', 'filterCategory', 'filterPayment', 'filterType'].forEach((id) => {
+        document.getElementById(id).value = '';
+      });
+      renderExpenses();
+    });
+
+    document.getElementById('cfgAllowance').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val) && val >= 0) {
+        state.allowance = val;
+        saveState();
+        renderBudgetAndGoals();
+      }
+    });
+
+    document.getElementById('cfgSavingsRate').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val) && val >= 0 && val <= 100) {
+        state.savingsRate = val;
+        saveState();
+        renderBudgetAndGoals();
+      }
+    });
+
+    document.getElementById('addCategoryForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('newCatName').value.trim();
+      const pct = parseFloat(document.getElementById('newCatPct').value);
+      if (!name || isNaN(pct) || pct < 0) return;
+      if (state.categories.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+        showToast('Category already exists.');
+        return;
+      }
+      state.categories.push({ id: 'cat_' + Date.now(), name, pct });
+      document.getElementById('newCatName').value = '';
+      document.getElementById('newCatPct').value = '';
+      saveState();
+      renderAll();
+      showToast(`Added category "${name}".`);
+    });
+
+    document.getElementById('categoryTableBody').addEventListener('change', (e) => {
+      const el = e.target;
+      const id = el.dataset.id;
+      const cat = state.categories.find((c) => c.id === id);
+      if (!cat) return;
+      if (el.dataset.action === 'rename-cat') {
+        const newName = el.value.trim();
+        if (!newName) { el.value = cat.name; return; }
+        const oldName = cat.name;
+        cat.name = newName;
+        state.expenses.forEach((ex) => { if (ex.category === oldName) ex.category = newName; });
+        saveState();
+        renderAll();
+      } else if (el.dataset.action === 'pct-cat') {
+        const pct = parseFloat(el.value);
+        if (!isNaN(pct) && pct >= 0) {
+          cat.pct = pct;
+          saveState();
+          renderBudgetAndGoals();
+        }
+      }
+    });
+
+    document.getElementById('categoryTableBody').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action="del-cat"]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      openConfirm('Delete Category', 'Remove this category from budget allocations? Existing expense records will remain in history.', () => {
+        state.categories = state.categories.filter((c) => c.id !== id);
+        saveState();
+        renderAll();
+        showToast('Category removed.');
+      });
+    });
+
+    document.getElementById('addGoalForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('newGoalName').value.trim();
+      const target = parseFloat(document.getElementById('newGoalTarget').value);
+      const priorSaved = parseFloat(document.getElementById('newGoalPrior').value) || 0;
+      const targetDate = document.getElementById('newGoalDate').value;
+      if (!name || isNaN(target) || target <= 0) return;
+      state.goals.push({ id: 'goal_' + Date.now(), name, target, priorSaved, targetDate });
+      ['newGoalName', 'newGoalTarget', 'newGoalPrior', 'newGoalDate'].forEach((id) => {
+        document.getElementById(id).value = '';
+      });
+      saveState();
+      renderAll();
+      showToast(`Added savings goal "${name}".`);
+    });
+
+    document.getElementById('goalsGrid').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action="del-goal"]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      openConfirm('Delete Savings Goal', 'Delete this savings goal?', () => {
+        state.goals = state.goals.filter((g) => g.id !== id);
+        saveState();
+        renderAll();
+        showToast('Savings goal deleted.');
+      });
+    });
+
+    function isStorageWritable() {
+      try {
+        const k = '__bp_test__';
+        localStorage.setItem(k, '1');
+        localStorage.removeItem(k);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function exportBackupFile() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `budget_planner_backup_${state.selectedMonth}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Backup downloaded.');
+    }
+
+    document.getElementById('bannerExportBtn').addEventListener('click', exportBackupFile);
+    document.getElementById('importJsonBtn').addEventListener('click', () => {
+      document.getElementById('importJsonInput').click();
+    });
+    document.getElementById('importJsonInput').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || ''));
+          if (!parsed || !Array.isArray(parsed.categories) || !Array.isArray(parsed.expenses)) {
+            showToast('Invalid backup file format.');
+            return;
+          }
+          if (!Array.isArray(parsed.borrowed)) parsed.borrowed = [];
+          if (!Array.isArray(parsed.lent)) parsed.lent = [];
+          if (!Array.isArray(parsed.goals)) parsed.goals = [];
+          state = parsed;
+          saveState();
+          renderAll();
+          showToast('Backup restored successfully.');
+        } catch (err) {
+          showToast('Could not read backup file.');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    document.getElementById('exportJsonBtn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `budget_planner_backup_${state.selectedMonth}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('resetDataBtn').addEventListener('click', () => {
+      openConfirm('Reset to Excel Workbook Data', 'Restore all categories, goals, and October 2026 entries from your original Excel workbook?', () => {
+        state = cloneInitial();
+        saveState();
+        renderAll();
+        showToast('Restored original workbook data.');
+      });
+    });
+
+    document.getElementById('confirmCancelBtn').addEventListener('click', closeConfirm);
+    document.getElementById('confirmOkBtn').addEventListener('click', () => {
+      if (confirmCallback) confirmCallback();
+      closeConfirm();
+    });
+
+    // Borrowed & Lent Handlers
+    function resetBorrowedForm() {
+      document.getElementById('borId').value = '';
+      document.getElementById('borName').value = '';
+      document.getElementById('borAmount').value = '';
+      document.getElementById('borReason').value = '';
+      document.getElementById('borSubmitBtn').textContent = 'Add Borrowed Record';
+      document.getElementById('cancelBorrowedEditBtn').classList.add('hidden');
+    }
+
+    function resetLentForm() {
+      document.getElementById('lentId').value = '';
+      document.getElementById('lentName').value = '';
+      document.getElementById('lentAmount').value = '';
+      document.getElementById('lentReason').value = '';
+      document.getElementById('lentSubmitBtn').textContent = 'Add Lent Record';
+      document.getElementById('cancelLentEditBtn').classList.add('hidden');
+    }
+
+    document.getElementById('cancelBorrowedEditBtn').addEventListener('click', resetBorrowedForm);
+    document.getElementById('cancelLentEditBtn').addEventListener('click', resetLentForm);
+
+    document.getElementById('borrowedForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('borId').value;
+      const name = document.getElementById('borName').value.trim();
+      const amount = parseFloat(document.getElementById('borAmount').value);
+      const date = document.getElementById('borDate').value;
+      const reason = document.getElementById('borReason').value.trim();
+      if (!name || isNaN(amount) || amount <= 0 || !date || !reason) return;
+      if (id) {
+        const idx = state.borrowed.findIndex((x) => x.id === id);
+        if (idx !== -1) state.borrowed[idx] = { id, name, amount, date, reason };
+        showToast('Borrowed record updated.');
+      } else {
+        state.borrowed.push({ id: 'bor_' + Date.now(), name, amount, date, reason });
+        showToast('Borrowed record added.');
+      }
+      saveState();
+      resetBorrowedForm();
+      renderBorrowedAndLent();
+    });
+
+    document.getElementById('lentForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('lentId').value;
+      const name = document.getElementById('lentName').value.trim();
+      const amount = parseFloat(document.getElementById('lentAmount').value);
+      const date = document.getElementById('lentDate').value;
+      const reason = document.getElementById('lentReason').value.trim();
+      if (!name || isNaN(amount) || amount <= 0 || !date || !reason) return;
+      if (id) {
+        const idx = state.lent.findIndex((x) => x.id === id);
+        if (idx !== -1) state.lent[idx] = { id, name, amount, date, reason };
+        showToast('Lent record updated.');
+      } else {
+        state.lent.push({ id: 'lent_' + Date.now(), name, amount, date, reason });
+        showToast('Lent record added.');
+      }
+      saveState();
+      resetLentForm();
+      renderBorrowedAndLent();
+    });
+
+    document.getElementById('borrowedTableBody').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      if (btn.dataset.action === 'edit-bor') {
+        const item = state.borrowed.find((x) => x.id === id);
+        if (!item) return;
+        document.getElementById('borId').value = item.id;
+        document.getElementById('borName').value = item.name;
+        document.getElementById('borAmount').value = item.amount;
+        document.getElementById('borDate').value = item.date;
+        document.getElementById('borReason').value = item.reason;
+        document.getElementById('borSubmitBtn').textContent = 'Update Borrowed Record';
+        document.getElementById('cancelBorrowedEditBtn').classList.remove('hidden');
+      } else if (btn.dataset.action === 'del-bor') {
+        openConfirm('Delete Borrowed Record', 'Are you sure you want to delete this borrowed money record?', () => {
+          state.borrowed = state.borrowed.filter((x) => x.id !== id);
+          saveState();
+          renderBorrowedAndLent();
+          showToast('Borrowed record deleted.');
+        });
+      }
+    });
+
+    document.getElementById('lentTableBody').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      if (btn.dataset.action === 'edit-lent') {
+        const item = state.lent.find((x) => x.id === id);
+        if (!item) return;
+        document.getElementById('lentId').value = item.id;
+        document.getElementById('lentName').value = item.name;
+        document.getElementById('lentAmount').value = item.amount;
+        document.getElementById('lentDate').value = item.date;
+        document.getElementById('lentReason').value = item.reason;
+        document.getElementById('lentSubmitBtn').textContent = 'Update Lent Record';
+        document.getElementById('cancelLentEditBtn').classList.remove('hidden');
+      } else if (btn.dataset.action === 'del-lent') {
+        openConfirm('Delete Lent Record', 'Are you sure you want to delete this money lent record?', () => {
+          state.lent = state.lent.filter((x) => x.id !== id);
+          saveState();
+          renderBorrowedAndLent();
+          showToast('Lent record deleted.');
+        });
+      }
+    });
+
+    // Initialize default date to today
+    const todayIso = new Date().toISOString().slice(0, 10);
+    document.getElementById('expDate').value = todayIso;
+    document.getElementById('borDate').value = todayIso;
+    document.getElementById('lentDate').value = todayIso;
+    if (!isStorageWritable()) {
+      document.getElementById('storageWarningBanner').classList.remove('hidden');
+    }
+    switchTab('dashboard');
+  </script>
+</body>
+</html>
